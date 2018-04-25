@@ -164,16 +164,32 @@ export function composeWithDataLoader(
     })
   )
     
+  function censor(censor) { // stackoverflow-driven fix
+    var i = 0;              // https://stackoverflow.com/questions/4816099/chrome-sendrequest-error-typeerror-converting-circular-structure-to-json
+  
+    return function(key, value) {
+      if(i !== 0 && typeof(censor) === 'object' && typeof(value) == 'object' && censor == value) 
+        return '[Circular]'; 
+  
+      if(i >= 29) // seems to be a harded maximum of 30 serialized objects?
+        return '[Unknown]';
+  
+      ++i; // so we know we aren't using the original object anymore
+  
+      return value;  
+    }
+  }
 
   const getHashKey = key =>{
-    let object = {}
+    let object = {};
     Object.assign(object, 
       { args: key.args || {} }, 
       { projection: key.projection || {} }, 
       { rawQuery: JSON.stringify(key.rawQuery || {}) }, 
-      { context: JSON.stringify(key.context || {}) })
+      { context: JSON.stringify(key.context || {}, censor(key.context)) })
+
     let hash = md5(JSON.stringify(object))
-    return hash
+    return hash;
   }
 
   return typeComposer
